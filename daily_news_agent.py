@@ -93,30 +93,42 @@ def summarize_node(state: NewsState) -> dict:
         return {"report": error_msg}
 
 # ==================== 节点 3：推送到微信 (WxPusher) ====================
+import requests
+import json
+
+
+# ... 在 send_notification_node 函数中 ...
+
 def send_notification_node(state: NewsState) -> dict:
     """通过 WxPusher 将简报推送到微信"""
     print("[send_notification] 正在推送到微信...")
 
     title = f"📰 每日 AI 新闻 ({datetime.now().strftime('%m月%d日')})"
     content = state["report"]
+    full_message = f"## {title}\n\n{content}"
+
+    # 准备请求数据
+    url = "https://wxpusher.zjiecode.com/api/send/message"
+    headers = {"Content-Type": "application/json"}
+    body = {
+        "appToken": os.getenv("WXPUSHER_APP_TOKEN"),
+        "content": full_message,
+        "contentType": 3,  # 1=文字, 2=HTML, 3=Markdown
+        "uids": [os.getenv("WXPUSHER_UID")],
+        "verifyPayType": 0
+    }
 
     try:
-        # 使用 WxPusher SDK 发送 Markdown 格式的消息
-        # 预先组装好“标题”和“内容”，作为一条完整的 Markdown 消息发送
-        full_message = f"## {title}\n\n{content}"
+        resp = requests.post(url, headers=headers, data=json.dumps(body), timeout=30)
+        result = resp.json()
 
-        result = WxPusher.send_message(
-            content=full_message,
-            uids=[WXPUSHER_UID],
-            token=WXPUSHER_APP_TOKEN,
-            content_type=WxPusher.CONTENT_TYPE_MD
-        )
         if result.get("code") == 1000:
             print("[send_notification] ✅ 推送成功")
         else:
-            print(f"[send_notification] ⚠️ 推送返回异常：{result}")
+            print(f"[send_notification] ❌ 推送失败，返回信息：{result}")
+
     except Exception as e:
-        print(f"[send_notification] ❌ 推送失败：{e}")
+        print(f"[send_notification] ❌ 推送请求异常：{e}")
 
     return state
 
