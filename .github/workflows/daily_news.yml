@@ -4,7 +4,7 @@ on:
   schedule:
     # UTC 时间 00:00 = 北京时间 08:00
     - cron: "0 0 * * *"
-  # 允许手动触发
+  # 允许手动触发，也设置了定时触发
   workflow_dispatch:
 
 jobs:
