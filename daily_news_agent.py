@@ -45,7 +45,7 @@ class NewsState(TypedDict):
 
 # ==================== 节点 1：搜索新闻 ====================
 def fetch_news_node(state: NewsState) -> dict:
-    """使用 Tavily 搜索每个关键词的最新新闻"""
+    """使用 Tavily 搜索每个关键词的最新新闻（含来源链接）"""
     print(f"[fetch_news] 开始搜索 {len(state['keywords'])} 个关键词...")
 
     all_results = []
@@ -56,8 +56,23 @@ def fetch_news_node(state: NewsState) -> dict:
                 tavily_api_key=os.getenv("TAVILY_API_KEY")
             )
             result = tool.invoke(f"{keyword} {datetime.now().strftime('%Y-%m-%d')}")
-            all_results.append(f"### 关键词：{keyword}\n{result}\n")
-            print(f"[fetch_news] ✅ 完成：{keyword}")
+            # Tavily 返回 dict，含 results 列表（title/url/content）
+            articles = result.get("results", []) if isinstance(result, dict) else []
+            if not articles:
+                all_results.append(f"### 关键词：{keyword}\n（未找到相关结果）\n")
+                print(f"[fetch_news] ⚠️ 无结果：{keyword}")
+                continue
+
+            lines = [f"### 关键词：{keyword}"]
+            for i, article in enumerate(articles, 1):
+                title = article.get("title", "无标题") or "无标题"
+                url = article.get("url", "") or ""
+                content = (article.get("content", "") or "")[:300]
+                lines.append(f'{i}. **[{title}]({url})**')
+                if content:
+                    lines.append(f"   > {content}")
+            all_results.append("\n".join(lines))
+            print(f"[fetch_news] ✅ 完成：{keyword}（{len(articles)} 条）")
         except Exception as e:
             print(f"[fetch_news] ❌ 搜索失败 [{keyword}]：{e}")
             all_results.append(f"### 关键词：{keyword}\n搜索失败：{e}\n")
@@ -74,10 +89,11 @@ def summarize_node(state: NewsState) -> dict:
 
 要求：
 1. 按关键词分类，每个关键词下列出 2-3 条最相关的新闻
-2. 每条新闻用一句话概括，并标注来源（如果有）
-3. 整体语言简洁清晰，适合手机阅读
-4. 在简报末尾添加一句简短的今日总结
-5. 不要添加无关内容，不要编造新闻
+2. 每条新闻用一句话概括
+3. **每条新闻必须包含对应的来源链接**，用 [标题](URL) 的 Markdown 链接格式附在新闻标题上，方便读者点击查看原文
+4. 整体语言简洁清晰，适合手机阅读
+5. 在简报末尾添加一句简短的今日总结
+6. 不要添加无关内容，不要编造新闻
 
 搜索内容：
 {state["raw_articles"]}
