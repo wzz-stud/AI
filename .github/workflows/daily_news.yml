@@ -3,7 +3,7 @@ name: Daily News Agent
 on:
   schedule:
     # UTC 时间 00:00 = 北京时间 08:00
-    - cron: "0 0 * * *"
+    - cron: "50 3 * * *"
   # 允许手动触发
   workflow_dispatch:
 
